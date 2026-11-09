@@ -76,6 +76,16 @@ def test_human_layer_without_deviations_equals_autonomous():
         assert abs(a[k] - h[k]) < 1e-9, k
 
 
+def test_one_at_a_time_multiplier_changes_only_one_hep():
+    """One-at-a-time sensitivity: only the HEP of the selected decision is multiplied (Table 15)."""
+    ref = human_error_probabilities(QUICK)
+    for d in ref:
+        mult = {k: (2.0 if k == d else 1.0) for k in ref}
+        h = human_error_probabilities(QUICK.with_(hep_decision_multiplier=mult))
+        for k in ref:
+            assert abs(h[k] - (2.0 if k == d else 1.0) * ref[k]) < 1e-12, (d, k)
+
+
 def test_gate_admission_rules():
     """Autonomous: no truck admitted outside its window (fallback to the LSA).
     Human-centric: discretionary admission. Baseline: admissions outside the window include queue effects."""
