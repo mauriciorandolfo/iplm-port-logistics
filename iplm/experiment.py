@@ -9,7 +9,7 @@ import pandas as pd
 from scipy import stats
 from sklearn.model_selection import train_test_split
 
-from .config import Config, MIN_PER_DAY
+from .config import Config, DECISIONS, MIN_PER_DAY
 from .data import generate_service_times, generate_trucks, training_dataset
 from .digital_twin import DigitalTwin
 from .hra import human_error_probabilities
@@ -51,6 +51,8 @@ def run_replication(cfg: Config, scenario: str, rep: int, tas: AdaptiveTAS, keep
     wall = time.perf_counter()
     twin.run(until=t1 + MIN_PER_DAY)          # one extra day to complete the trucks in the system
     out = {"scenario": scenario, "replication": rep, "hep_multiplier": cfg.hep_multiplier}
+    if scenario == "human_centric":
+        out.update({f"hep_{d}": h for d, h in human_error_probabilities(cfg).items()})
     out.update(compute_kpis(twin, t0, t1))
     out.update(ml_info)
     out["wall_time_s"] = time.perf_counter() - wall
@@ -72,11 +74,31 @@ def run_experiment(cfg: Config, scenarios: Iterable[str], replications: Optional
     return pd.DataFrame(rows)
 
 
+def sensitivity_one_at_a_time(cfg: Config, multipliers: Iterable[float] = (0.5, 2.0),
+                              replications: Optional[int] = None, tas: Optional[AdaptiveTAS] = None) -> pd.DataFrame:
+    """Human-centric scenario with the HEP of one decision multiplied by each factor while the other two are kept
+    at their adopted values (Section 5.6, Table 15). The reference experiment uses the adopted HEPs."""
+    tas = tas or train_prediction_module(cfg)
+    runs = [("reference", cfg)]
+    for d in DECISIONS:
+        for m in multipliers:
+            mult = {k: (m if k == d else 1.0) for k in DECISIONS}
+            runs.append((f"{d} x{m:g}", cfg.with_(hep_decision_multiplier=mult)))
+    frames = []
+    for name, c in runs:
+        print(f"experiment: {name}", flush=True)
+        df = run_experiment(c, ["human_centric"], replications, tas)
+        df.insert(0, "experiment", name)
+        frames.append(df)
+    return pd.concat(frames, ignore_index=True)
+
+
 def summarise(df: pd.DataFrame, by=("scenario", "hep_multiplier"), conf: float = 0.95) -> pd.DataFrame:
     """Mean and confidence half-width of every KPI."""
-    kpis = [c for c in df.columns if c not in ("scenario", "replication", "hep_multiplier") and df[c].dtype != object]
+    kpis = [c for c in df.columns if c not in ("scenario", "replication", "hep_multiplier", "experiment")
+            and df[c].dtype != object]
     rows = []
-    for key, g in df.groupby(list(by)):
+    for key, g in df.groupby(list(by), sort=False):
         row = dict(zip(by, key if isinstance(key, tuple) else (key,)))
         n = len(g)
         for k in kpis:

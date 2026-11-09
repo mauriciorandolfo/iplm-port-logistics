@@ -105,7 +105,9 @@ class Config:
     })
     alpha: float = 0.5                       # scaling coefficient of Equation 1
     nhep: Dict[str, float] = field(default_factory=lambda: {"maint": 0.05, "storage": 0.03, "sched": 0.06})
-    hep_multiplier: float = 1.0              # sensitivity analysis (Section 5.6, Table 14)
+    hep_multiplier: float = 1.0              # sensitivity analysis, all decisions (Section 5.6, Table 14)
+    hep_decision_multiplier: Dict[str, float] = field(            # one-at-a-time sensitivity (Section 5.6, Table 15)
+        default_factory=lambda: {"maint": 1.0, "storage": 1.0, "sched": 1.0})
 
     # ------------------------- human decision logic (Section 3.1.4, Table 5)
     # shares of the deviation outcomes: (delay, suboptimal decision, improvement) - Table 5 (scenario assumptions)

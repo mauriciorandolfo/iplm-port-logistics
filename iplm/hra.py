@@ -21,7 +21,8 @@ def psf_multipliers(cfg: Config) -> Dict[str, np.ndarray]:
 def human_error_probabilities(cfg: Config) -> Dict[str, float]:
     """HEP of each decision (Equation 5, Table 4), scaled by the sensitivity multiplier."""
     m = psf_multipliers(cfg)
-    return {d: float(min(1.0, cfg.hep_multiplier * cfg.nhep[d] * np.prod(m[d]))) for d in DECISIONS}
+    return {d: float(min(1.0, cfg.hep_multiplier * cfg.hep_decision_multiplier[d] * cfg.nhep[d] * np.prod(m[d])))
+            for d in DECISIONS}
 
 
 def hra_tables(cfg: Config) -> str:
