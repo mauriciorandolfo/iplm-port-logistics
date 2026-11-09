@@ -7,6 +7,7 @@ python main.py ml                                    # classifier metrics (struc
 python main.py pilot                                 # pilot sample and number of replications (Section 4)
 python main.py run --reps 25                         # baseline, autonomous and human-centric (Table 13)
 python main.py sensitivity --reps 25                 # HEP multipliers 0.5, 1, 1.5, 2 (Table 14)
+python main.py sensitivity-oat --reps 25             # one HEP at a time, x0.5 and x2 (Table 15)
 python main.py run --days 30 --reps 2                # quick test
 
 Results are written to the folder `outputs/`. With the illustrative parameters of
@@ -21,8 +22,8 @@ from pathlib import Path
 import pandas as pd
 
 from iplm.config import SCENARIOS, Config
-from iplm.experiment import (evaluate_prediction_module, required_replications, run_experiment, summarise,
-                             train_prediction_module)
+from iplm.experiment import (evaluate_prediction_module, required_replications, run_experiment,
+                             sensitivity_one_at_a_time, summarise, train_prediction_module)
 from iplm.hra import hra_tables
 
 OUT = Path(__file__).resolve().parent / "outputs"
@@ -37,11 +38,12 @@ def _save(df: pd.DataFrame, name: str) -> Path:
 
 def main():
     ap = argparse.ArgumentParser(description="Intelligent Port Logistics Model (IPLM)")
-    ap.add_argument("command", choices=["hra", "ml", "run", "sensitivity", "pilot"])
+    ap.add_argument("command", choices=["hra", "ml", "run", "sensitivity", "sensitivity-oat", "pilot"])
     ap.add_argument("--scenarios", nargs="+", default=list(SCENARIOS), choices=list(SCENARIOS))
     ap.add_argument("--reps", type=int, default=None, help="number of replications (default: Config.replications)")
     ap.add_argument("--days", type=int, default=None, help="simulated days per replication (default: 365)")
-    ap.add_argument("--multipliers", nargs="+", type=float, default=[0.5, 1.0, 1.5, 2.0])
+    ap.add_argument("--multipliers", nargs="+", type=float, default=None,
+                    help="HEP multipliers (default: 0.5 1 1.5 2 for sensitivity; 0.5 2 for sensitivity-oat)")
     ap.add_argument("--seed", type=int, default=None)
     a = ap.parse_args()
 
@@ -72,7 +74,7 @@ def main():
         print("saved:", _save(s, "summary"))
     elif a.command == "sensitivity":
         frames = []
-        for mlt in a.multipliers:
+        for mlt in a.multipliers or [0.5, 1.0, 1.5, 2.0]:
             print(f"HEP multiplier {mlt}")
             frames.append(run_experiment(cfg.with_(hep_multiplier=mlt), ["human_centric"], a.reps, tas))
         df = pd.concat(frames, ignore_index=True)
@@ -81,6 +83,14 @@ def main():
         print(s[["hep_multiplier", "avg_trucks_queue_gate", "avg_wait_gate_s", "avg_wait_yard_s", "avg_dwell_s",
                  "pct_corrective_maintenance", "pct_admitted_outside_time_window"]].round(2).to_string(index=False))
         print("saved:", _save(s, "sensitivity_summary"))
+    elif a.command == "sensitivity-oat":
+        df = sensitivity_one_at_a_time(cfg, a.multipliers or [0.5, 2.0], a.reps, tas)
+        print("saved:", _save(df, "sensitivity_oat_replications"))
+        s = summarise(df, by=("experiment",))
+        print(s[["experiment", "hep_maint", "hep_storage", "hep_sched", "avg_trucks_queue_gate", "avg_wait_gate_s",
+                 "avg_wait_yard_s", "avg_dwell_s", "pct_corrective_maintenance",
+                 "pct_admitted_outside_time_window"]].round(4).to_string(index=False))
+        print("saved:", _save(s, "sensitivity_oat_summary"))
 
 
 if __name__ == "__main__":

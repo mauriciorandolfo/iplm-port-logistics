@@ -2,9 +2,8 @@
 
 Source code of the simulation-driven decision-support model described in:
 
-> Flores, M. R. et al. *Human reliability in intelligent port logistics: a simulation-based assessment of
-> human-centric decision-making in integrated logistics and maintenance planning*. Flexible Services and
-> Manufacturing Journal (under review).
+> Flores, M. R. et al. *Human-centric decision-making reliability in intelligent port logistics: a
+> simulation-based assessment*. Flexible Services and Manufacturing Journal (under review).
 
 The IPLM integrates a discrete-event **Digital Twin** of a container terminal (SimPy) with three decision
 modules – **truck arrival-status prediction** (supervised Machine Learning), **storage management** and
@@ -30,7 +29,7 @@ Table 5, gate admission limit, punctuality shares and monthly truck volume). Inp
 | Sections 3.1.4 and 3.4, Figure 4 (Digital Twin: LSA, gate admission, yard, equipment) | `iplm/digital_twin.py` |
 | Section 3.5, Figure 5, Equation 6, Table 7, Appendix A.1 (Genetic Algorithm) | `iplm/ga_optimizer.py` |
 | Table 8 (data structure) | `iplm/data.py` (synthetic) |
-| Section 4 (replications, KPIs), Tables 10, 13 and 14 | `iplm/experiment.py`, `iplm/kpi_tracker.py` |
+| Section 4 (replications, KPIs), Tables 10, 13, 14 and 15 | `iplm/experiment.py`, `iplm/kpi_tracker.py` |
 | Section 3.4 (verification) | `tests/test_verification.py` |
 
 ### Decision nodes in each scenario
@@ -73,6 +72,7 @@ python main.py ml                        # accuracy and class-wise metrics of th
 python main.py pilot                     # pilot sample and required number of replications (Section 4)
 python main.py run --reps 25             # baseline, autonomous and human-centric (Table 13)
 python main.py sensitivity --reps 25     # HEP multipliers 0.5, 1, 1.5 and 2 (Table 14)
+python main.py sensitivity-oat --reps 25 # one decision at a time, HEP x0.5 and x2 (Table 15)
 python main.py run --days 30 --reps 2    # quick test
 python -m pytest tests                   # verification tests
 ```
